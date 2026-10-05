@@ -1,0 +1,544 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>GeoFaith: explore the places that shaped belief</title>
+<meta name="description" content="Five sacred places a day. Tap the globe where you think each one is, then learn the story behind it.">
+<meta name="theme-color" content="#15233B">
+<meta property="og:title" content="GeoFaith">
+<meta property="og:description" content="Five sacred places a day. How close can you get?">
+<meta property="og:image" content="https://geofaith.app/og.png">
+<meta property="og:url" content="https://geofaith.app/">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Alegreya:ital,wght@0,400;0,700;1,400&family=Alegreya+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/maplibre-gl/5.12.0/maplibre-gl.min.css">
+<style>
+:root{--paper:#E8EEEE;--card:#F8FAF9;--ink:#15233B;--muted:#566377;--red:#BF2A2A;--rule:2px solid var(--ink)}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{background:var(--paper);color:var(--ink);font:17px/1.5 'Alegreya Sans',system-ui,sans-serif;-webkit-font-smoothing:antialiased;font-variant-numeric:lining-nums tabular-nums;-webkit-tap-highlight-color:transparent}
+.app{display:flex;flex-direction:column;height:100vh;height:100dvh;max-width:560px;margin:0 auto;background:var(--paper)}
+@media (min-width:600px){.app{border-left:var(--rule);border-right:var(--rule)}}
+.bar{display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding:calc(env(safe-area-inset-top) + 12px) 16px 10px;border-bottom:var(--rule);background:var(--card)}
+.brand{font:700 24px/1 'Alegreya',serif;letter-spacing:-.01em;color:var(--ink);text-decoration:none}
+.meta{display:flex;gap:14px;font-size:15px;color:var(--muted);white-space:nowrap}
+.meta b{color:var(--ink)}
+main{flex:1;min-height:0;display:flex;flex-direction:column}
+.screen{flex:1;min-height:0;display:flex;flex-direction:column}
+.screen[hidden]{display:none}
+.scroll{overflow-y:auto;-webkit-overflow-scrolling:touch;padding:28px 16px calc(28px + env(safe-area-inset-bottom))}
+.scroll > * + *{margin-top:18px}
+
+/* intro */
+.title{font:700 64px/.95 'Alegreya',serif;letter-spacing:-.03em}
+.tag{font:italic 24px/1.25 'Alegreya',serif;color:var(--muted)}
+.lede{font:19px/1.55 'Alegreya',serif;max-width:34em}
+.steps{list-style:none;counter-reset:s;border:var(--rule);background:var(--card)}
+.steps li{counter-increment:s;display:grid;grid-template-columns:44px 1fr;border-bottom:1px solid var(--ink)}
+.steps li:last-child{border-bottom:0}
+.steps li::before{content:counter(s);font:700 20px/1 'Alegreya',serif;padding:12px 0;text-align:center;border-right:1px solid var(--ink)}
+.steps li span{padding:10px 12px}
+.small{font-size:15px;color:var(--muted)}
+
+/* tables */
+table{width:100%;border-collapse:collapse;border:var(--rule);background:var(--card);font-size:16px}
+caption{text-align:left;font:700 20px/1.2 'Alegreya',serif;padding-bottom:8px}
+th,td{padding:9px 10px;border-bottom:1px solid var(--ink);text-align:left;vertical-align:top}
+th{font-weight:700;background:var(--paper)}
+tr:last-child td{border-bottom:0}
+.n{text-align:right;white-space:nowrap}
+tr.you td{background:#F3DADA;font-weight:700}
+
+/* play */
+.qpanel{padding:12px 16px 14px;border-bottom:var(--rule);background:var(--card)}
+.qline{display:flex;justify-content:space-between;font-size:15px;color:var(--muted)}
+.prompt{font:700 27px/1.15 'Alegreya',serif;letter-spacing:-.01em;margin-top:4px}
+.hint{font:italic 17px/1.35 'Alegreya',serif;color:var(--muted);margin-top:3px}
+#map{flex:1;min-height:200px;background:var(--paper)}
+.maplibregl-canvas-container.maplibregl-interactive{cursor:crosshair}
+.dock{border-top:var(--rule);background:var(--card);padding:0 16px calc(12px + env(safe-area-inset-bottom))}
+.reveal{max-height:44vh;max-height:44dvh;overflow-y:auto;padding-top:14px}
+.reveal[hidden]{display:none}
+.dist{font:700 60px/1 'Alegreya',serif;letter-spacing:-.02em}
+.dist small{font:500 18px 'Alegreya Sans',sans-serif;letter-spacing:0;color:var(--muted);margin-left:6px}
+.pts{font-weight:700;color:var(--red);margin-top:6px}
+.place{font:700 22px/1.2 'Alegreya',serif;margin-top:12px;padding-top:12px;border-top:1px solid var(--ink)}
+.where{font-size:15px;color:var(--muted)}
+.story{font:18px/1.55 'Alegreya',serif;margin-top:6px}
+
+/* buttons */
+.btn{display:block;width:100%;margin-top:12px;padding:15px 16px;border:var(--rule);border-radius:0;background:var(--ink);color:var(--card);font:700 18px/1.2 'Alegreya Sans',sans-serif;text-align:center;cursor:pointer;box-shadow:4px 4px 0 var(--red)}
+.btn:active{transform:translate(3px,3px);box-shadow:1px 1px 0 var(--red)}
+.btn:disabled{background:transparent;color:var(--muted);border:2px dashed var(--muted);box-shadow:none;transform:none;cursor:default}
+.btn.alt{background:var(--card);color:var(--ink);box-shadow:4px 4px 0 var(--ink)}
+:focus-visible{outline:3px solid var(--red);outline-offset:3px}
+
+/* results */
+.total{font:700 76px/1 'Alegreya',serif;letter-spacing:-.03em}
+.total small{font:500 22px 'Alegreya Sans',sans-serif;color:var(--muted);letter-spacing:0;margin-left:6px}
+.grid{font-size:30px;letter-spacing:4px;line-height:1}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.row2 .btn{margin-top:0}
+input.nick{width:100%;padding:13px 12px;border:var(--rule);border-radius:0;background:var(--card);color:var(--ink);font:500 18px 'Alegreya Sans',sans-serif}
+.msg{font-size:15px;color:var(--red);min-height:1.2em}
+
+/* map symbols */
+.pin{width:20px;height:20px;border-radius:50%;background:#fff;border:4px solid var(--ink)}
+.ans{width:26px;height:24px;background:var(--red);clip-path:polygon(50% 0,100% 100%,0 100%);position:relative}
+.ans::after{content:'';position:absolute;left:10px;top:12px;width:6px;height:6px;border-radius:50%;background:#fff}
+.maplibregl-ctrl-attrib{font:11px 'Alegreya Sans',sans-serif}
+.tapnote{padding:14px 0 2px;font:italic 18px/1.3 'Alegreya',serif;color:var(--muted);text-align:center}
+.tapnote[hidden]{display:none}
+.mult{color:var(--red);font-weight:700}
+/* 7-day chart */
+.week{border:var(--rule);background:var(--card);padding:12px 10px 8px}
+.bars{display:grid;grid-template-columns:repeat(7,1fr);gap:8px;align-items:end;height:120px;border-bottom:1px solid var(--ink)}
+.bars div{background:var(--paper);border:1px solid var(--ink);border-bottom:0;min-height:3px}
+.bars .g{background:#2F7A4A}.bars .y{background:#D9A21B}.bars .r{background:var(--red)}
+.bars .miss{border-style:dashed;background:transparent}
+.days{display:grid;grid-template-columns:repeat(7,1fr);gap:8px;text-align:center;font-size:14px;color:var(--muted);padding-top:4px}
+.days b{color:var(--ink)}
+/* leaderboard */
+.bnav{display:grid;grid-template-columns:48px 1fr 48px;align-items:center;border:var(--rule);border-bottom:0;background:var(--card)}
+.bnav button{height:44px;border:0;background:transparent;font:700 24px 'Alegreya',serif;color:var(--ink);cursor:pointer}
+.bnav button:disabled{color:#b7c0c9;cursor:default}
+.bnav span{text-align:center;font-weight:700;border-left:1px solid var(--ink);border-right:1px solid var(--ink);line-height:44px}
+@media (prefers-reduced-motion:reduce){.btn:active{transform:none}}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="bar">
+    <a class="brand" href="./">GeoFaith</a>
+    <div class="meta"><span id="gameNo"></span><span id="streakTop"></span></div>
+  </header>
+  <main>
+    <section id="intro" class="screen" hidden>
+      <div class="scroll">
+        <h1 class="title">GeoFaith</h1>
+        <p class="tag">Explore the places that shaped belief.</p>
+        <p class="lede">Five sacred places a day, the same five for everyone. Tap the globe where you think each one is. The closer you land, the more you score.</p>
+        <ol class="steps">
+          <li><span>Read the place and its clue.</span></li>
+          <li><span>Tap the globe once. That tap is your answer, so drag and zoom first.</span></li>
+          <li><span>See how far off you were, then learn the story behind it.</span></li>
+        </ol>
+        <table>
+          <caption>Points per tap</caption>
+          <thead><tr><th>Distance from the answer</th><th class="n">Base points</th></tr></thead>
+          <tbody id="scoreRows"></tbody>
+        </table>
+        <table>
+          <caption>Later places are worth more</caption>
+          <thead><tr><th>Question</th><th class="n">Multiplier</th><th class="n">Up to</th></tr></thead>
+          <tbody>
+            <tr><td>1</td><td class="n">×1</td><td class="n">100</td></tr>
+            <tr><td>2</td><td class="n">×1</td><td class="n">100</td></tr>
+            <tr><td>3</td><td class="n">×2</td><td class="n">200</td></tr>
+            <tr><td>4</td><td class="n">×3</td><td class="n">300</td></tr>
+            <tr><td>5</td><td class="n">×3</td><td class="n">300</td></tr>
+            <tr><th>A perfect day</th><th></th><th class="n">1,000</th></tr>
+          </tbody>
+        </table>
+        <button class="btn" id="startBtn">Play today's five</button>
+        <p class="small">New places every day at midnight, Irish time. Your progress saves if you close the app mid-round.</p>
+      </div>
+    </section>
+
+    <section id="play" class="screen" hidden>
+      <div class="qpanel">
+        <div class="qline"><span id="qCount"></span><span id="runScore"></span></div>
+        <h1 class="prompt" id="qPrompt"></h1>
+        <p class="hint" id="qHint"></p>
+      </div>
+      <div id="map" role="application" aria-label="Globe. Drag to turn it, pinch to zoom, tap once to answer."></div>
+      <div class="dock">
+        <p class="tapnote" id="tapNote">Tap the globe where you think it is.</p>
+        <div class="reveal" id="reveal" hidden aria-live="polite">
+          <div class="dist"><span id="rKm"></span><small>km away</small></div>
+          <p class="pts" id="rPts"></p>
+          <h2 class="place" id="rName"></h2>
+          <p class="where" id="rWhere"></p>
+          <p class="story" id="rStory"></p>
+          <button class="btn" id="nextBtn">Next question</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="results" class="screen" hidden>
+      <div class="scroll">
+        <p class="small" id="resHead"></p>
+        <div class="total"><span id="resTotal"></span><small>/ 1,000</small></div>
+        <div class="grid" id="resGrid" aria-label="Score per question"></div>
+        <button class="btn" id="shareBtn">Share your result</button>
+        <table>
+          <caption>Today's places</caption>
+          <thead><tr><th>Place</th><th class="n">Off by</th><th class="n">Points</th></tr></thead>
+          <tbody id="resRows"></tbody>
+        </table>
+        <section id="board" hidden>
+          <table style="margin:0">
+            <caption>Leaderboard</caption>
+          </table>
+          <div class="bnav"><button id="bPrev" aria-label="Previous day">‹</button><span id="bDate"></span><button id="bNext" aria-label="Next day">›</button></div>
+          <table>
+            <thead><tr><th class="n">#</th><th>Player</th><th class="n">Score</th></tr></thead>
+            <tbody id="boardRows"></tbody>
+          </table>
+          <div id="postWrap" style="margin-top:14px">
+            <input class="nick" id="nick" maxlength="16" placeholder="Your name on the board" autocomplete="nickname">
+            <button class="btn alt" id="postBtn">Post my score</button>
+            <p class="msg" id="postMsg"></p>
+          </div>
+        </section>
+        <div>
+          <table style="border-bottom:0"><caption>Your last 7 days</caption></table>
+          <div class="week"><div class="bars" id="bars"></div><div class="days" id="days"></div></div>
+        </div>
+        <table>
+          <caption>Your record</caption>
+          <tbody>
+            <tr><td>Days played</td><td class="n" id="stPlayed"></td></tr>
+            <tr><td>Current streak</td><td class="n" id="stStreak"></td></tr>
+            <tr><td>Best streak</td><td class="n" id="stBest"></td></tr>
+            <tr><td>Average score</td><td class="n" id="stAvg"></td></tr>
+          </tbody>
+        </table>
+        <p class="small" id="countdown"></p>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/maplibre-gl/5.12.0/maplibre-gl.js"></script>
+<script>
+/* ---------- config ---------- */
+const LAUNCH = '2026-10-01';          // game No. 1
+const TZ = 'Europe/Dublin';           // everyone rolls over at the same moment
+const SB_URL = '';                    // e.g. https://xxxx.supabase.co  (leave blank to hide the leaderboard)
+const SB_KEY = '';                    // Supabase anon / publishable key
+const MULT = [1, 1, 2, 3, 3];
+const QUESTIONS = [{"id":"GF001","prompt":"Where is Church of the Holy Sepulchre?","answer":"Church of the Holy Sepulchre","hint":"Traditional site of the crucifixion and tomb of Jesus","lat":31.7784,"lng":35.2296,"country":"Jerusalem","tradition":"Christianity","difficulty":1,"story":"Six Christian denominations share custody of the church, and the keys to its front door have been held by a Muslim family for centuries as a neutral arrangement."},{"id":"GF002","prompt":"Where is Church of the Nativity?","answer":"Church of the Nativity","hint":"Built over the grotto where Jesus is said to have been born","lat":31.7043,"lng":35.2078,"country":"Bethlehem, West Bank","tradition":"Christianity","difficulty":1,"story":"Visitors enter through the 'Door of Humility', a doorway so low that most people must bow to pass through."},{"id":"GF003","prompt":"Where is St Peter's Basilica?","answer":"St Peter's Basilica","hint":"The heart of the Catholic Church","lat":41.9022,"lng":12.4539,"country":"Vatican City","tradition":"Christianity","difficulty":1,"story":"Tradition holds it stands over the burial place of the apostle Peter, and it sits inside the world's smallest independent state."},{"id":"GF004","prompt":"Where is Basilica of St Francis?","answer":"Basilica of St Francis","hint":"Hill town home of the saint who preached to the birds","lat":43.075,"lng":12.6058,"country":"Italy","tradition":"Christianity","difficulty":2,"story":"Built in two stacked churches, it holds the tomb of Francis and frescoes by Giotto telling the story of his life."},{"id":"GF005","prompt":"Where is Santiago de Compostela Cathedral?","answer":"Santiago de Compostela Cathedral","hint":"End point of the Camino pilgrimage","lat":42.8806,"lng":-8.5446,"country":"Spain","tradition":"Christianity","difficulty":1,"story":"Pilgrims walk hundreds of kilometres to reach the reputed resting place of the apostle James the Greater."},{"id":"GF006","prompt":"Where is Sanctuary of Our Lady of Lourdes?","answer":"Sanctuary of Our Lady of Lourdes","hint":"Grotto of reported Marian apparitions in 1858","lat":43.0975,"lng":-0.0584,"country":"France","tradition":"Christianity","difficulty":2,"story":"A 14-year-old named Bernadette reported 18 visions here; millions now visit the spring each year seeking healing."},{"id":"GF007","prompt":"Where is Sanctuary of Fátima?","answer":"Sanctuary of Fátima","hint":"Three shepherd children, 1917","lat":39.6317,"lng":-8.6727,"country":"Portugal","tradition":"Christianity","difficulty":2,"story":"The 'Miracle of the Sun' was reportedly witnessed by tens of thousands gathered here in October 1917."},{"id":"GF008","prompt":"Where is Canterbury Cathedral?","answer":"Canterbury Cathedral","hint":"Seat of the Anglican primate","lat":51.2798,"lng":1.0828,"country":"England","tradition":"Christianity","difficulty":2,"story":"Archbishop Thomas Becket was killed inside in 1170, turning the cathedral into one of medieval Europe's great pilgrim destinations."},{"id":"GF009","prompt":"Where is Hagia Sophia?","answer":"Hagia Sophia","hint":"Cathedral, then mosque, then museum, then mosque again","lat":41.0086,"lng":28.9802,"country":"Turkey","tradition":"Christianity / Islam","difficulty":1,"story":"For nearly a thousand years it was the largest cathedral in the world, and its dome reshaped religious architecture."},{"id":"GF010","prompt":"Where is Sagrada Família?","answer":"Sagrada Família","hint":"Gaudí's unfinished basilica","lat":41.4036,"lng":2.1744,"country":"Spain","tradition":"Christianity","difficulty":1,"story":"Construction began in 1882 and is still under way, funded largely by visitors' entry tickets."},{"id":"GF011","prompt":"Where is All Saints' Church, Wittenberg?","answer":"All Saints' Church, Wittenberg","hint":"The door where the Reformation is said to have begun","lat":51.8664,"lng":12.6431,"country":"Germany","tradition":"Christianity","difficulty":3,"story":"Martin Luther is traditionally said to have posted his 95 Theses here in 1517; he is also buried inside."},{"id":"GF012","prompt":"Where is St Catherine's Monastery, Sinai?","answer":"St Catherine's Monastery, Sinai","hint":"At the foot of the mountain of the Ten Commandments","lat":28.5559,"lng":33.976,"country":"Egypt","tradition":"Christianity / Judaism","difficulty":2,"story":"One of the oldest continuously working Christian monasteries, it holds a library of ancient manuscripts second only to the Vatican's."},{"id":"GF013","prompt":"Where is Rock-Hewn Churches of Lalibela?","answer":"Rock-Hewn Churches of Lalibela","hint":"Eleven churches carved downward into solid rock","lat":12.0317,"lng":39.0414,"country":"Ethiopia","tradition":"Christianity","difficulty":2,"story":"King Lalibela reportedly commissioned them as a 'New Jerusalem' for Christians unable to reach the Holy Land."},{"id":"GF014","prompt":"Where is Basilica of Our Lady of Guadalupe?","answer":"Basilica of Our Lady of Guadalupe","hint":"The most-visited Catholic shrine in the Americas","lat":19.4847,"lng":-99.1172,"country":"Mexico","tradition":"Christianity","difficulty":2,"story":"It houses the cloak of Juan Diego, which carries the image associated with a 1531 apparition."},{"id":"GF015","prompt":"Where is Christ the Redeemer?","answer":"Christ the Redeemer","hint":"Arms wide open over a coastal city","lat":-22.9519,"lng":-43.2105,"country":"Brazil","tradition":"Christianity","difficulty":1,"story":"The 30-metre statue on Corcovado mountain is regularly struck by lightning and has been repaired many times."},{"id":"GF016","prompt":"Where is Mount Athos?","answer":"Mount Athos","hint":"A self-governing peninsula of monasteries","lat":40.1575,"lng":24.3264,"country":"Greece","tradition":"Christianity","difficulty":3,"story":"Around twenty Orthodox monasteries sit here, and women have been barred from entering for over a thousand years."},{"id":"GF017","prompt":"Where is Skellig Michael?","answer":"Skellig Michael","hint":"Beehive huts on a rocky Atlantic island","lat":51.7708,"lng":-10.5406,"country":"Ireland","tradition":"Christianity","difficulty":2,"story":"Early monks lived on this remote crag for centuries, climbing over 600 stone steps to their clifftop monastery."},{"id":"GF018","prompt":"Where is Croagh Patrick?","answer":"Croagh Patrick","hint":"Ireland's holy mountain","lat":53.7597,"lng":-9.6583,"country":"Ireland","tradition":"Christianity","difficulty":2,"story":"Tradition says St Patrick fasted on its summit for 40 days; thousands still climb it on 'Reek Sunday', some barefoot."},{"id":"GF019","prompt":"Where is Glendalough?","answer":"Glendalough","hint":"Monastic city of the 'glen of two lakes'","lat":53.0106,"lng":-6.3297,"country":"Ireland","tradition":"Christianity","difficulty":2,"story":"Founded by St Kevin in the 6th century, its round tower still stands about 30 metres tall."},{"id":"GF020","prompt":"Where is Clonmacnoise?","answer":"Clonmacnoise","hint":"Monastery on the River Shannon","lat":53.3263,"lng":-7.9868,"country":"Ireland","tradition":"Christianity","difficulty":3,"story":"Founded by St Ciarán, it became one of Europe's great centres of learning, and High Kings of Ireland were buried here."},{"id":"GF021","prompt":"Where is Knock Shrine?","answer":"Knock Shrine","hint":"Village of an 1879 apparition","lat":53.7917,"lng":-8.9186,"country":"Ireland","tradition":"Christianity","difficulty":2,"story":"Fifteen villagers reported a silent vision on the church gable; a pope visited in 1979 and again in 2018."},{"id":"GF022","prompt":"Where is Iona Abbey?","answer":"Iona Abbey","hint":"Island base of St Columba's mission","lat":56.3345,"lng":-6.3925,"country":"Scotland","tradition":"Christianity","difficulty":3,"story":"Columba sailed here from Ireland in 563, and the island became a launch point for Christianity across Scotland."},{"id":"GF023","prompt":"Where is Capernaum?","answer":"Capernaum","hint":"Lakeside town at the centre of Jesus' ministry","lat":32.8808,"lng":35.575,"country":"Israel","tradition":"Christianity / Judaism","difficulty":3,"story":"The ruins include a synagogue and what many believe was the house of Peter, on the Sea of Galilee's north shore."},{"id":"GF024","prompt":"Where is House of the Virgin Mary, Ephesus?","answer":"House of the Virgin Mary, Ephesus","hint":"Hillside home where Mary is said to have lived her final years","lat":37.9116,"lng":27.3336,"country":"Turkey","tradition":"Christianity / Islam","difficulty":3,"story":"It is revered by both Christians and Muslims, who honour Mary as Maryam."},{"id":"GF025","prompt":"Where is St Basil's Cathedral?","answer":"St Basil's Cathedral","hint":"Onion domes on Red Square","lat":55.7525,"lng":37.6231,"country":"Russia","tradition":"Christianity","difficulty":1,"story":"Commissioned by Ivan the Terrible, its colourful domes were meant to look like flames rising to heaven."},{"id":"GF026","prompt":"Where is Westminster Abbey?","answer":"Westminster Abbey","hint":"Where English and British monarchs are crowned","lat":51.4993,"lng":-0.1273,"country":"England","tradition":"Christianity","difficulty":1,"story":"Every coronation since 1066 has taken place here, and it holds the graves of Newton and Darwin."},{"id":"GF027","prompt":"Where is Salt Lake Temple?","answer":"Salt Lake Temple","hint":"Six-spired granite temple in a desert valley","lat":40.7704,"lng":-111.8919,"country":"USA","tradition":"Christianity (Latter-day Saints)","difficulty":2,"story":"It took 40 years to build and is the headquarters temple of The Church of Jesus Christ of Latter-day Saints."},{"id":"GF028","prompt":"Where is The Kaaba (Masjid al-Haram)?","answer":"The Kaaba (Masjid al-Haram)","hint":"The direction Muslims face in prayer","lat":21.4225,"lng":39.8262,"country":"Saudi Arabia","tradition":"Islam","difficulty":1,"story":"Over a billion people face this cube-shaped building five times a day, and circling it is central to the Hajj."},{"id":"GF029","prompt":"Where is Al-Masjid an-Nabawi?","answer":"Al-Masjid an-Nabawi","hint":"Mosque of the Prophet","lat":24.4672,"lng":39.6112,"country":"Saudi Arabia","tradition":"Islam","difficulty":1,"story":"First built by Muhammad himself, its green dome marks his burial place."},{"id":"GF030","prompt":"Where is Dome of the Rock?","answer":"Dome of the Rock","hint":"Golden dome over the Foundation Stone","lat":31.778,"lng":35.2354,"country":"Jerusalem","tradition":"Islam","difficulty":1,"story":"Completed in 691, it is one of the oldest surviving Islamic monuments, linked to Muhammad's Night Journey."},{"id":"GF031","prompt":"Where is Great Mosque of Djenné?","answer":"Great Mosque of Djenné","hint":"The world's largest mud-brick building","lat":13.9053,"lng":-4.5552,"country":"Mali","tradition":"Islam","difficulty":2,"story":"Each year the whole town joins a festival to re-plaster the mosque with fresh mud before the rains."},{"id":"GF032","prompt":"Where is Mezquita of Córdoba?","answer":"Mezquita of Córdoba","hint":"A forest of red-and-white striped arches","lat":37.8789,"lng":-4.7794,"country":"Spain","tradition":"Islam / Christianity","difficulty":2,"story":"Once one of the largest mosques in the world, it has had a cathedral built into its centre since the 1500s."},{"id":"GF033","prompt":"Where is Imam Reza Shrine?","answer":"Imam Reza Shrine","hint":"The largest mosque complex by area","lat":36.2878,"lng":59.6156,"country":"Iran","tradition":"Islam","difficulty":3,"story":"It holds the tomb of the eighth Shia Imam and draws tens of millions of pilgrims each year."},{"id":"GF034","prompt":"Where is Imam Husayn Shrine?","answer":"Imam Husayn Shrine","hint":"Site of the Battle of Karbala","lat":32.6166,"lng":44.0325,"country":"Iraq","tradition":"Islam","difficulty":3,"story":"The Arbaeen walk to this shrine is among the largest annual gatherings of people anywhere."},{"id":"GF035","prompt":"Where is Sheikh Zayed Grand Mosque?","answer":"Sheikh Zayed Grand Mosque","hint":"White marble and 82 domes","lat":24.4128,"lng":54.475,"country":"UAE","tradition":"Islam","difficulty":2,"story":"Its hand-knotted carpet was, for years, the largest in the world."},{"id":"GF036","prompt":"Where is Badshahi Mosque?","answer":"Badshahi Mosque","hint":"Red sandstone Mughal mosque","lat":31.5881,"lng":74.3099,"country":"Pakistan","tradition":"Islam","difficulty":3,"story":"Built by Emperor Aurangzeb in 1673, its courtyard can hold around 100,000 worshippers."},{"id":"GF037","prompt":"Where is Great Mosque of Kairouan?","answer":"Great Mosque of Kairouan","hint":"Early centre of Islamic learning in North Africa","lat":35.6812,"lng":10.1037,"country":"Tunisia","tradition":"Islam","difficulty":3,"story":"Its minaret is one of the oldest standing anywhere, and the city is sometimes counted as a holy city of Islam."},{"id":"GF038","prompt":"Where is Istiqlal Mosque?","answer":"Istiqlal Mosque","hint":"Largest mosque in Southeast Asia","lat":-6.1702,"lng":106.831,"country":"Indonesia","tradition":"Islam","difficulty":3,"story":"Built facing a Catholic cathedral, it was designed by a Christian architect as a symbol of national unity."},{"id":"GF039","prompt":"Where is Hassan II Mosque?","answer":"Hassan II Mosque","hint":"Half built over the Atlantic Ocean","lat":33.6083,"lng":-7.6325,"country":"Morocco","tradition":"Islam","difficulty":2,"story":"Its minaret reaches around 210 metres, and part of the prayer hall floor is glass over the sea."},{"id":"GF040","prompt":"Where is Jabal al-Nour (Cave of Hira)?","answer":"Jabal al-Nour (Cave of Hira)","hint":"The mountain cave of the first revelation","lat":21.4575,"lng":39.8592,"country":"Saudi Arabia","tradition":"Islam","difficulty":3,"story":"Muslims believe the first verses of the Quran were revealed to Muhammad in a small cave near its summit."},{"id":"GF041","prompt":"Where is Umayyad Mosque?","answer":"Umayyad Mosque","hint":"One of the oldest grand mosques","lat":33.5116,"lng":36.3066,"country":"Syria","tradition":"Islam / Christianity","difficulty":2,"story":"It holds a shrine said to contain the head of John the Baptist, revered by Christians and Muslims alike."},{"id":"GF042","prompt":"Where is Mevlana Museum (Tomb of Rumi)?","answer":"Mevlana Museum (Tomb of Rumi)","hint":"Home of the whirling dervishes","lat":37.8708,"lng":32.5048,"country":"Turkey","tradition":"Islam (Sufism)","difficulty":3,"story":"The 13th-century poet Rumi is buried here beneath a turquoise-tiled tower."},{"id":"GF043","prompt":"Where is Shah Mosque, Isfahan?","answer":"Shah Mosque, Isfahan","hint":"Blue-tiled masterpiece on a vast square","lat":32.6546,"lng":51.6776,"country":"Iran","tradition":"Islam","difficulty":3,"story":"Its dome is known for an echo that repeats several times when you stand directly beneath it."},{"id":"GF044","prompt":"Where is Mount Arafat?","answer":"Mount Arafat","hint":"The Day of Standing during Hajj","lat":21.3549,"lng":39.9841,"country":"Saudi Arabia","tradition":"Islam","difficulty":3,"story":"Pilgrims gather on this plain in prayer; Muhammad gave his Farewell Sermon here."},{"id":"GF045","prompt":"Where is The Western Wall?","answer":"The Western Wall","hint":"Remnant of the Second Temple's retaining wall","lat":31.7767,"lng":35.2345,"country":"Jerusalem","tradition":"Judaism","difficulty":1,"story":"Visitors tuck handwritten prayers into its cracks; the notes are collected twice a year and buried on the Mount of Olives."},{"id":"GF046","prompt":"Where is Masada?","answer":"Masada","hint":"Desert fortress above the Dead Sea","lat":31.3156,"lng":35.3536,"country":"Israel","tradition":"Judaism","difficulty":2,"story":"According to the historian Josephus, its defenders chose death over surrender to Rome around 73 CE."},{"id":"GF047","prompt":"Where is Cave of the Patriarchs?","answer":"Cave of the Patriarchs","hint":"Burial place of Abraham, Isaac and Jacob","lat":31.5245,"lng":35.1108,"country":"Hebron, West Bank","tradition":"Judaism / Islam","difficulty":3,"story":"Holy to Jews, Muslims and Christians, it is divided between a synagogue and a mosque."},{"id":"GF048","prompt":"Where is Safed?","answer":"Safed","hint":"Hilltop city of Kabbalah","lat":32.9646,"lng":35.496,"country":"Israel","tradition":"Judaism","difficulty":3,"story":"In the 1500s it became the centre of Jewish mysticism, and many doors are still painted blue."},{"id":"GF049","prompt":"Where is Old-New Synagogue?","answer":"Old-New Synagogue","hint":"Europe's oldest active synagogue","lat":50.0903,"lng":14.4185,"country":"Czech Republic","tradition":"Judaism","difficulty":3,"story":"Legend says the Golem of Prague still lies hidden in its attic."},{"id":"GF050","prompt":"Where is Dohány Street Synagogue?","answer":"Dohány Street Synagogue","hint":"Largest synagogue in Europe","lat":47.4957,"lng":19.0608,"country":"Hungary","tradition":"Judaism","difficulty":3,"story":"It seats about 3,000 people and its garden holds a memorial tree with leaves inscribed with Holocaust victims' names."},{"id":"GF051","prompt":"Where is Qumran?","answer":"Qumran","hint":"Where the Dead Sea Scrolls were found","lat":31.7417,"lng":35.4593,"country":"West Bank","tradition":"Judaism","difficulty":3,"story":"A shepherd reportedly found the first scrolls in a cave nearby in 1946-47."},{"id":"GF052","prompt":"Where is Mount Nebo?","answer":"Mount Nebo","hint":"Where Moses viewed the Promised Land","lat":31.7677,"lng":35.7258,"country":"Jordan","tradition":"Judaism / Christianity","difficulty":2,"story":"The Bible says Moses saw the land of Canaan from here before he died."},{"id":"GF053","prompt":"Where is Dashashwamedh Ghat, Varanasi?","answer":"Dashashwamedh Ghat, Varanasi","hint":"Riverside steps of the holiest city","lat":25.3068,"lng":83.0104,"country":"India","tradition":"Hinduism","difficulty":1,"story":"Every evening priests perform the Ganga Aarti here, offering fire to the river."},{"id":"GF054","prompt":"Where is Tirumala Venkateswara Temple?","answer":"Tirumala Venkateswara Temple","hint":"One of the most-visited temples in the world","lat":13.6833,"lng":79.3474,"country":"India","tradition":"Hinduism","difficulty":3,"story":"Many devotees shave their heads here as an offering of humility."},{"id":"GF055","prompt":"Where is Angkor Wat?","answer":"Angkor Wat","hint":"The largest religious monument on Earth","lat":13.4125,"lng":103.867,"country":"Cambodia","tradition":"Hinduism / Buddhism","difficulty":1,"story":"Built as a Hindu temple to Vishnu, it gradually became Buddhist and appears on the national flag."},{"id":"GF056","prompt":"Where is Meenakshi Amman Temple?","answer":"Meenakshi Amman Temple","hint":"Towers covered in thousands of painted figures","lat":9.9195,"lng":78.1193,"country":"India","tradition":"Hinduism","difficulty":2,"story":"Its 14 gopurams are decorated with an estimated 33,000 sculptures."},{"id":"GF057","prompt":"Where is Jagannath Temple, Puri?","answer":"Jagannath Temple, Puri","hint":"Home of the Rath Yatra chariot festival","lat":19.8048,"lng":85.8179,"country":"India","tradition":"Hinduism","difficulty":2,"story":"The English word 'juggernaut' comes from the huge chariots pulled through the streets here."},{"id":"GF058","prompt":"Where is Kedarnath Temple?","answer":"Kedarnath Temple","hint":"Himalayan shrine to Shiva","lat":30.7352,"lng":79.0669,"country":"India","tradition":"Hinduism","difficulty":3,"story":"Accessible only part of the year, it survived a devastating 2013 flood largely intact."},{"id":"GF059","prompt":"Where is Pashupatinath Temple?","answer":"Pashupatinath Temple","hint":"Shiva's temple on the Bagmati River","lat":27.7105,"lng":85.3487,"country":"Nepal","tradition":"Hinduism","difficulty":2,"story":"Its riverbanks are one of the most important Hindu cremation sites outside India."},{"id":"GF060","prompt":"Where is Prambanan?","answer":"Prambanan","hint":"Towering spires dedicated to the Trimurti","lat":-7.752,"lng":110.4915,"country":"Indonesia","tradition":"Hinduism","difficulty":3,"story":"The 9th-century compound honours Brahma, Vishnu and Shiva and inspired Java's Ramayana ballet."},{"id":"GF061","prompt":"Where is Batu Caves?","answer":"Batu Caves","hint":"A golden statue before 272 steps","lat":3.2379,"lng":101.684,"country":"Malaysia","tradition":"Hinduism","difficulty":2,"story":"A giant statue of Lord Murugan guards limestone caves that host the Thaipusam festival."},{"id":"GF062","prompt":"Where is Mount Kailash?","answer":"Mount Kailash","hint":"The unclimbed sacred peak","lat":31.0675,"lng":81.3119,"country":"Tibet, China","tradition":"Hinduism / Buddhism / Jainism / Bön","difficulty":2,"story":"Sacred to four religions, it has never been summited; pilgrims walk around it instead."},{"id":"GF063","prompt":"Where is Triveni Sangam?","answer":"Triveni Sangam","hint":"Meeting point of three sacred rivers","lat":25.4246,"lng":81.8849,"country":"India","tradition":"Hinduism","difficulty":2,"story":"It hosts the Kumbh Mela, which has drawn crowds counted in the tens of millions."},{"id":"GF064","prompt":"Where is Pura Besakih?","answer":"Pura Besakih","hint":"Mother temple on a volcano's slope","lat":-8.3742,"lng":115.4508,"country":"Indonesia","tradition":"Hinduism","difficulty":3,"story":"This complex of over 80 temples sits on Mount Agung, Bali's highest peak."},{"id":"GF065","prompt":"Where is Mahabodhi Temple?","answer":"Mahabodhi Temple","hint":"Where the Buddha attained enlightenment","lat":24.6959,"lng":84.9911,"country":"India","tradition":"Buddhism","difficulty":1,"story":"A descendant of the original Bodhi tree still grows beside the temple."},{"id":"GF066","prompt":"Where is Lumbini?","answer":"Lumbini","hint":"Birthplace of the Buddha","lat":27.4833,"lng":83.2767,"country":"Nepal","tradition":"Buddhism","difficulty":2,"story":"An inscribed pillar from Emperor Ashoka, set up in 249 BCE, marks the spot."},{"id":"GF067","prompt":"Where is Sarnath?","answer":"Sarnath","hint":"Deer park of the first sermon","lat":25.3811,"lng":83.0231,"country":"India","tradition":"Buddhism","difficulty":3,"story":"The Buddha is said to have first taught the Four Noble Truths here to five companions."},{"id":"GF068","prompt":"Where is Borobudur?","answer":"Borobudur","hint":"The world's largest Buddhist temple","lat":-7.6079,"lng":110.2038,"country":"Indonesia","tradition":"Buddhism","difficulty":1,"story":"Pilgrims walk its terraces clockwise, passing over 2,600 carved relief panels on the way up."},{"id":"GF069","prompt":"Where is Shwedagon Pagoda?","answer":"Shwedagon Pagoda","hint":"Gold-plated stupa crowned with diamonds","lat":16.7984,"lng":96.1495,"country":"Myanmar","tradition":"Buddhism","difficulty":2,"story":"It is said to enshrine strands of the Buddha's hair."},{"id":"GF070","prompt":"Where is Potala Palace?","answer":"Potala Palace","hint":"Former winter home of the Dalai Lama","lat":29.6578,"lng":91.1169,"country":"Tibet, China","tradition":"Buddhism","difficulty":1,"story":"This hillside palace has over a thousand rooms and sits at about 3,700 metres."},{"id":"GF071","prompt":"Where is Temple of the Sacred Tooth Relic?","answer":"Temple of the Sacred Tooth Relic","hint":"Home of the Buddha's tooth","lat":7.2936,"lng":80.6413,"country":"Sri Lanka","tradition":"Buddhism","difficulty":2,"story":"Whoever held the relic was long believed to hold the right to rule the island."},{"id":"GF072","prompt":"Where is Tōdai-ji?","answer":"Tōdai-ji","hint":"Giant bronze Buddha among wandering deer","lat":34.689,"lng":135.8398,"country":"Japan","tradition":"Buddhism","difficulty":2,"story":"Its Great Buddha Hall was for centuries the world's largest wooden building."},{"id":"GF073","prompt":"Where is Bagan?","answer":"Bagan","hint":"A plain of thousands of temples","lat":21.1717,"lng":94.8585,"country":"Myanmar","tradition":"Buddhism","difficulty":2,"story":"Over 2,000 temples and pagodas still stand across its dusty plain."},{"id":"GF074","prompt":"Where is Wat Phra Kaew?","answer":"Wat Phra Kaew","hint":"Temple of the Emerald Buddha","lat":13.7516,"lng":100.4927,"country":"Thailand","tradition":"Buddhism","difficulty":2,"story":"The king personally changes the small jade statue's golden robes with the seasons."},{"id":"GF075","prompt":"Where is Shaolin Temple?","answer":"Shaolin Temple","hint":"Birthplace of Zen and kung fu","lat":34.5074,"lng":112.9355,"country":"China","tradition":"Buddhism","difficulty":2,"story":"Tradition credits the monk Bodhidharma with bringing Chan (Zen) Buddhism here."},{"id":"GF076","prompt":"Where is Kinkaku-ji?","answer":"Kinkaku-ji","hint":"The Golden Pavilion","lat":35.0394,"lng":135.7292,"country":"Japan","tradition":"Buddhism","difficulty":2,"story":"Its top floors are covered in gold leaf; the current building dates from 1955 after arson destroyed the original."},{"id":"GF077","prompt":"Where is Harmandir Sahib (Golden Temple)?","answer":"Harmandir Sahib (Golden Temple)","hint":"Gilded temple in a sacred pool","lat":31.62,"lng":74.8765,"country":"India","tradition":"Sikhism","difficulty":1,"story":"Its free community kitchen, the langar, can serve around 100,000 meals a day."},{"id":"GF078","prompt":"Where is Gurdwara Janam Asthan, Nankana Sahib?","answer":"Gurdwara Janam Asthan, Nankana Sahib","hint":"Birthplace of Guru Nanak","lat":31.45,"lng":73.7064,"country":"Pakistan","tradition":"Sikhism","difficulty":3,"story":"The founder of Sikhism was born here in 1469."},{"id":"GF079","prompt":"Where is Gurdwara Darbar Sahib, Kartarpur?","answer":"Gurdwara Darbar Sahib, Kartarpur","hint":"Where Guru Nanak spent his final years","lat":32.0866,"lng":75.0168,"country":"Pakistan","tradition":"Sikhism","difficulty":3,"story":"A visa-free corridor opened in 2019 lets Indian pilgrims cross the border to visit."},{"id":"GF080","prompt":"Where is Shatrunjaya Hill, Palitana?","answer":"Shatrunjaya Hill, Palitana","hint":"A mountain covered in around 900 temples","lat":21.4833,"lng":71.7833,"country":"India","tradition":"Jainism","difficulty":3,"story":"Pilgrims climb about 3,500 steps, and no one is permitted to sleep on the mountain overnight."},{"id":"GF081","prompt":"Where is Shravanabelagola?","answer":"Shravanabelagola","hint":"A monolithic statue 17 metres tall","lat":12.8544,"lng":76.4847,"country":"India","tradition":"Jainism","difficulty":3,"story":"Every 12 years the statue of Bahubali is bathed in milk, saffron and flowers."},{"id":"GF082","prompt":"Where is Ranakpur Jain Temple?","answer":"Ranakpur Jain Temple","hint":"A temple of over 1,400 carved pillars","lat":25.1156,"lng":73.4728,"country":"India","tradition":"Jainism","difficulty":3,"story":"Legend says no two of its marble pillars are carved exactly alike."},{"id":"GF083","prompt":"Where is Ise Grand Shrine?","answer":"Ise Grand Shrine","hint":"Shinto's holiest shrine","lat":34.455,"lng":136.7253,"country":"Japan","tradition":"Shinto","difficulty":2,"story":"The inner shrine is rebuilt from new timber every 20 years, a cycle kept for over a millennium."},{"id":"GF084","prompt":"Where is Fushimi Inari Taisha?","answer":"Fushimi Inari Taisha","hint":"Tunnels of vermilion gates","lat":34.9671,"lng":135.7727,"country":"Japan","tradition":"Shinto","difficulty":1,"story":"Thousands of torii gates, each donated by a person or business, line the paths up the mountain."},{"id":"GF085","prompt":"Where is Itsukushima Shrine?","answer":"Itsukushima Shrine","hint":"The 'floating' torii gate","lat":34.2959,"lng":132.3199,"country":"Japan","tradition":"Shinto","difficulty":2,"story":"At high tide the great gate appears to float on the sea."},{"id":"GF086","prompt":"Where is Mount Fuji?","answer":"Mount Fuji","hint":"Japan's sacred volcano","lat":35.3606,"lng":138.7274,"country":"Japan","tradition":"Shinto / Buddhism","difficulty":1,"story":"Its summit crater is considered sacred and hosts shrines, and pilgrims have climbed it for centuries."},{"id":"GF087","prompt":"Where is Temple of Heaven?","answer":"Temple of Heaven","hint":"Where emperors prayed for good harvests","lat":39.8822,"lng":116.4066,"country":"China","tradition":"Chinese folk religion / Confucianism","difficulty":2,"story":"Its round halls on square bases reflect the old belief in a round heaven over a square earth."},{"id":"GF088","prompt":"Where is Temple of Confucius, Qufu?","answer":"Temple of Confucius, Qufu","hint":"Confucius' hometown","lat":35.5966,"lng":116.9911,"country":"China","tradition":"Confucianism","difficulty":3,"story":"Built the year after his death, it grew into one of China's largest historic complexes."},{"id":"GF089","prompt":"Where is Yazd Atash Behram?","answer":"Yazd Atash Behram","hint":"A sacred flame in the desert","lat":31.8778,"lng":54.3706,"country":"Iran","tradition":"Zoroastrianism","difficulty":3,"story":"Its fire is said to have burned continuously for about 1,500 years."},{"id":"GF090","prompt":"Where is Iranshah Atash Behram, Udvada?","answer":"Iranshah Atash Behram, Udvada","hint":"Oldest fire temple in India","lat":20.4867,"lng":72.8703,"country":"India","tradition":"Zoroastrianism","difficulty":3,"story":"Parsi refugees from Persia are said to have carried this fire with them over a thousand years ago."},{"id":"GF091","prompt":"Where is Shrine of the Báb?","answer":"Shrine of the Báb","hint":"Golden dome over terraced gardens","lat":32.8144,"lng":34.987,"country":"Israel","tradition":"Bahá'í","difficulty":2,"story":"It sits at the centre of 19 terraces running down Mount Carmel toward the sea."},{"id":"GF092","prompt":"Where is Lotus Temple?","answer":"Lotus Temple","hint":"A temple shaped like a flower","lat":28.5535,"lng":77.2588,"country":"India","tradition":"Bahá'í","difficulty":2,"story":"Made of 27 marble 'petals', it welcomes people of all faiths to pray in silence."},{"id":"GF093","prompt":"Where is Stonehenge?","answer":"Stonehenge","hint":"Standing stones aligned with the sun","lat":51.1789,"lng":-1.8262,"country":"England","tradition":"Ancient","difficulty":1,"story":"Some of its stones were dragged over 200 km from Wales around 5,000 years ago."},{"id":"GF094","prompt":"Where is Newgrange?","answer":"Newgrange","hint":"A passage tomb older than the pyramids","lat":53.6947,"lng":-6.4755,"country":"Ireland","tradition":"Ancient","difficulty":2,"story":"At the winter solstice, sunlight enters a roof-box and floods the inner chamber for about 17 minutes."},{"id":"GF095","prompt":"Where is Uluru?","answer":"Uluru","hint":"A sacred sandstone monolith","lat":-25.3444,"lng":131.0369,"country":"Australia","tradition":"Aboriginal Australian","difficulty":1,"story":"It is deeply sacred to the Anangu people, and climbing it was banned in 2019 out of respect."},{"id":"GF096","prompt":"Where is Delphi?","answer":"Delphi","hint":"Home of the Oracle","lat":38.4824,"lng":22.501,"country":"Greece","tradition":"Ancient Greek","difficulty":2,"story":"The ancient Greeks considered it the navel of the world, where the priestess of Apollo gave prophecies."},{"id":"GF097","prompt":"Where is Karnak?","answer":"Karnak","hint":"Vast temple complex of Amun","lat":25.7188,"lng":32.6573,"country":"Egypt","tradition":"Ancient Egyptian","difficulty":2,"story":"Its Great Hypostyle Hall holds 134 massive columns carved with hieroglyphs."},{"id":"GF098","prompt":"Where is Göbekli Tepe?","answer":"Göbekli Tepe","hint":"Possibly the world's oldest temple","lat":37.2231,"lng":38.9225,"country":"Turkey","tradition":"Ancient","difficulty":3,"story":"Built around 11,000 years ago, it predates farming, pottery and the invention of writing."},{"id":"GF099","prompt":"Where is Teotihuacan?","answer":"Teotihuacan","hint":"Avenue of the Dead and the Pyramid of the Sun","lat":19.6925,"lng":-98.8438,"country":"Mexico","tradition":"Ancient Mesoamerican","difficulty":2,"story":"The Aztecs found it already abandoned and named it 'the place where the gods were created'."},{"id":"GF100","prompt":"Where is Hill of Tara?","answer":"Hill of Tara","hint":"Seat of the High Kings","lat":53.5797,"lng":-6.6119,"country":"Ireland","tradition":"Ancient","difficulty":3,"story":"The Lia Fáil, or Stone of Destiny, was said to cry out when the rightful king touched it."}];
+
+/* ---------- utils ---------- */
+const $ = s => document.querySelector(s);
+const fmt = n => n.toLocaleString('en-IE');
+const dateIn = d => new Intl.DateTimeFormat('en-CA', {timeZone:TZ, year:'numeric', month:'2-digit', day:'2-digit'}).format(d);
+const dayNum = k => { const [y,m,d] = k.split('-').map(Number); return Math.round(Date.UTC(y,m-1,d)/864e5); };
+const keyOfNum = n => new Date(n*864e5).toISOString().slice(0,10);
+const params = new URLSearchParams(location.search);
+const REAL_TODAY = dateIn(new Date());
+const TODAY = /^\d{4}-\d{2}-\d{2}$/.test(params.get('day')||'') ? params.get('day') : REAL_TODAY;
+const IS_REAL = TODAY === REAL_TODAY;
+const TODAY_N = dayNum(TODAY);
+const labelFor = n => { const g = n - dayNum(LAUNCH) + 1; return g >= 1 ? 'No. ' + g : 'Preview'; };
+const MODE = TODAY_N < dayNum(REAL_TODAY) ? 'replay' : TODAY_N > dayNum(REAL_TODAY) ? 'preview' : 'live';
+const LABEL = labelFor(TODAY_N);
+
+function hash(s){let h=1779033703^s.length;for(let i=0;i<s.length;i++){h=Math.imul(h^s.charCodeAt(i),3432918353);h=h<<13|h>>>19}return h>>>0}
+function rng(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+function km(a,b,c,d){const R=6371,r=Math.PI/180,dl=(c-a)*r,dg=(d-b)*r;const x=Math.sin(dl/2)**2+Math.cos(a*r)*Math.cos(c*r)*Math.sin(dg/2)**2;return 2*R*Math.asin(Math.min(1,Math.sqrt(x)))}
+// 100 inside 25 km, steep early, soft at long range, 0 on the far side of the planet
+const score = k => k <= 25 ? 100 : Math.max(0, Math.round(100 * (1 - Math.pow(k / 20015, 0.35))));
+const tile = p => p >= 90 ? '🟩' : p >= 50 ? '🟨' : p >= 1 ? '🟥' : '⬛';
+const trad = q => q.tradition.split(' / ')[0].split(' (')[0];
+
+/* ---------- daily schedule: 20-day cycles, no repeats within a cycle ---------- */
+const cycles = {};
+function cycle(c){
+  if (cycles[c]) return cycles[c];
+  const r = rng(hash('geofaith-' + c)), pool = QUESTIONS.slice(), days = Array.from({length:20}, () => []);
+  for (let i = pool.length-1; i > 0; i--) { const j = Math.floor(r()*(i+1)); [pool[i],pool[j]] = [pool[j],pool[i]]; }
+  pool.filter(q => q.difficulty === 1).slice(0, 20).forEach((q,i) => days[i].push(q));
+  const freq = {}; pool.forEach(q => freq[trad(q)] = (freq[trad(q)]||0) + 1);
+  const rest = pool.filter(q => !days.some(d => d.includes(q))).sort((a,b) => freq[trad(b)] - freq[trad(a)]);
+  for (const q of rest) {
+    let best = null, bestCost = Infinity;
+    days.forEach((d,i) => {
+      if (d.length >= 5) return;
+      const cost = d.filter(p => trad(p) === trad(q)).length * 10
+                 + d.filter(p => km(p.lat,p.lng,q.lat,q.lng) < 300).length * 40
+                 + (q.difficulty === 3 && d.filter(p => p.difficulty === 3).length >= 2 ? 15 : 0)
+                 + d.length + ((i * 7 + c) % 20) / 100;
+      if (cost < bestCost) { bestCost = cost; best = d; }
+    });
+    best.push(q);
+  }
+  days.forEach(d => d.sort((a,b) => a.difficulty - b.difficulty));   // hardest last, where multipliers are highest
+  return cycles[c] = days;
+}
+const DAY_INDEX = TODAY_N - dayNum(LAUNCH);           // 0 on launch day; negative days are previews
+const SET = cycle(Math.floor(DAY_INDEX/20))[((DAY_INDEX%20)+20)%20];
+
+/* ---------- state ---------- */
+const STORE = 'geofaith.v2';
+const fresh = () => ({days:{},played:0,streak:0,best:0,last:null,sum:0,nick:'',postedDays:[]});
+function loadState(){
+  try {
+    const raw = JSON.parse(localStorage.getItem(STORE) || 'null');
+    if (!raw || typeof raw !== 'object') return fresh();
+    const st = Object.assign(fresh(), raw);
+    if (!st.days || typeof st.days !== 'object' || Array.isArray(st.days)) st.days = {};
+    for (const k of Object.keys(st.days)) { const d = st.days[k]; if (!d || !Array.isArray(d.g)) delete st.days[k]; }
+    if (!Array.isArray(st.postedDays)) st.postedDays = [];
+    for (const f of ['played','streak','best','sum']) if (!Number.isFinite(st[f])) st[f] = 0;
+    if (!Number.isFinite(st.last)) st.last = null;
+    if (typeof st.nick !== 'string') st.nick = '';
+    return st;
+  } catch(e) { return fresh(); }
+}
+let S = loadState();
+const save = () => { try { localStorage.setItem(STORE, JSON.stringify(S)); } catch(e) {} };
+if (!S.device) S.device = crypto.randomUUID ? crypto.randomUUID() : String(Math.random()).slice(2) + Date.now();
+if (params.get('dev') === 'reset') delete S.days[TODAY];     // testing only: ?dev=reset
+const hasPosted = k => S.postedDays.includes(k);
+const T = S.days[TODAY] || (S.days[TODAY] = {g:[], done:false});
+save();
+const total = () => T.g.reduce((a,g) => a + g.w, 0);
+const dayTotal = k => (S.days[k] && S.days[k].done) ? S.days[k].g.reduce((a,g) => a + g.w, 0) : null;
+const liveStreak = () => (S.last === dayNum(REAL_TODAY) || S.last === dayNum(REAL_TODAY)-1) ? S.streak : 0;
+
+function header(){
+  $('#gameNo').textContent = LABEL;
+  const s = liveStreak();
+  $('#streakTop').innerHTML = s ? '🔥 <b>' + s + '</b>' : '';
+}
+function show(id){ for (const s of document.querySelectorAll('.screen')) s.hidden = s.id !== id; }
+
+/* ---------- globe ---------- */
+const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+let map, ready = false, markers = [], answered = false;
+function fitZoom(){ const el = $('#map'); const m = Math.min(el.clientWidth, el.clientHeight) || 360; return Math.log2(m * 0.86 * Math.PI / 512); }
+function initMap(){
+  if (map) return;
+  const tiles = ['a','b','c','d'].map(s => `https://${s}.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}@2x.png`);
+  map = new maplibregl.Map({
+    container: 'map',
+    style: { version:8, projection:{type:'globe'},
+      sources: { base: { type:'raster', tiles, tileSize:256, maxzoom:18, attribution:'© OpenStreetMap © CARTO' } },
+      layers: [ { id:'base', type:'raster', source:'base' } ] },
+    center: [20, 25], zoom: fitZoom(), minZoom: 0, maxZoom: 10,
+    dragRotate: false, pitchWithRotate: false, touchPitch: false,
+    attributionControl: { compact: true }
+  });
+  map.touchZoomRotate.disableRotation();
+  if (window.ResizeObserver) new ResizeObserver(() => map.resize()).observe($('#map'));
+  map.on('style.load', () => { try { map.setProjection({type:'globe'}); } catch(e) {} });
+  map.on('load', () => {
+    map.addSource('arc', {type:'geojson', data:{type:'FeatureCollection', features:[]}});
+    map.addLayer({id:'arc', type:'line', source:'arc', layout:{'line-cap':'round'}, paint:{'line-color':'#BF2A2A', 'line-width':3, 'line-dasharray':[1.5, 1.5]}});
+    ready = true;
+  });
+  map.on('click', e => { if (ready && !answered) guess(e.lngLat); });
+}
+function marker(cls, lngLat){
+  const el = document.createElement('div'); el.className = cls;
+  const m = new maplibregl.Marker({element:el, anchor:'center'}).setLngLat(lngLat).addTo(map);
+  markers.push(m); return m;
+}
+function clearMap(){
+  markers.forEach(m => m.remove()); markers = [];
+  if (ready) map.getSource('arc').setData({type:'FeatureCollection', features:[]});
+}
+// great-circle path, longitudes unwrapped so the line never jumps across the antimeridian
+function arc(a, b){
+  const r = Math.PI/180, toV = p => [Math.cos(p[1]*r)*Math.cos(p[0]*r), Math.cos(p[1]*r)*Math.sin(p[0]*r), Math.sin(p[1]*r)];
+  const A = toV(a), B = toV(b), d = Math.acos(Math.min(1, A[0]*B[0]+A[1]*B[1]+A[2]*B[2]));
+  if (d < 1e-6) return [a, b];
+  const pts = []; let prev = null;
+  for (let i = 0; i <= 64; i++) {
+    const t = i/64, s1 = Math.sin((1-t)*d)/Math.sin(d), s2 = Math.sin(t*d)/Math.sin(d);
+    const x = s1*A[0]+s2*B[0], y = s1*A[1]+s2*B[1], z = s1*A[2]+s2*B[2];
+    let lng = Math.atan2(y, x)/r; const lat = Math.atan2(z, Math.hypot(x, y))/r;
+    if (prev !== null) lng += 360 * Math.round((prev - lng) / 360);
+    pts.push([lng, lat]); prev = lng;
+  }
+  return pts;
+}
+
+/* ---------- play ---------- */
+function startPlay(){
+  show('play'); initMap(); setTimeout(() => map.resize(), 60);
+  question();
+}
+function question(){
+  const i = T.g.length, q = SET[i];
+  $('#qCount').innerHTML = 'Question ' + (i+1) + ' of 5' + (MULT[i] > 1 ? ' <span class="mult">×' + MULT[i] + '</span>' : '');
+  $('#runScore').textContent = fmt(total()) + ' points';
+  $('#qPrompt').textContent = q.prompt;
+  $('#qHint').textContent = q.hint;
+  $('#reveal').hidden = true; $('#tapNote').hidden = false;
+  answered = false;
+  if (map) { clearMap(); map.easeTo({center:[20,25], zoom:fitZoom(), duration: reduced ? 0 : 600}); }
+}
+function guess(ll){
+  answered = true;
+  const i = T.g.length, q = SET[i];
+  const lng = ((ll.lng + 180) % 360 + 360) % 360 - 180;
+  const d = km(ll.lat, lng, q.lat, q.lng), p = score(d);
+  T.g.push({lat:+ll.lat.toFixed(4), lng:+lng.toFixed(4), km:Math.round(d), p, w:p*MULT[i]});
+  if (T.g.length === 5) finishDay();
+  save();
+  reveal(q, T.g[i], i);
+}
+function reveal(q, g, i){
+  const path = arc([g.lng, g.lat], [q.lng, q.lat]);
+  marker('pin', [g.lng, g.lat]);
+  marker('ans', path[path.length-1]);
+  map.getSource('arc').setData({type:'Feature', geometry:{type:'LineString', coordinates:path}});
+  $('#rName').textContent = q.answer;
+  $('#rWhere').textContent = q.country + ', ' + q.tradition;
+  $('#rStory').textContent = q.story;
+  $('#rPts').textContent = (g.p === 100 ? 'Perfect. ' : '') + g.p + ' points' + (MULT[i] > 1 ? ' ×' + MULT[i] + ' = ' + g.w : '');
+  $('#runScore').textContent = fmt(total()) + ' points';
+  $('#tapNote').hidden = true; $('#reveal').hidden = false; $('#reveal').scrollTop = 0;
+  // the dock just grew, so resize the globe before framing the pin and the answer
+  requestAnimationFrame(() => {
+    map.resize();
+    if (g.km <= 25) map.flyTo({center:[q.lng, q.lat], zoom:6, duration: reduced ? 0 : 1200});
+    else {
+      const lngs = path.map(p => p[0]), lats = path.map(p => p[1]);
+      map.fitBounds([[Math.min(...lngs), Math.min(...lats)], [Math.max(...lngs), Math.max(...lats)]], {padding:48, maxZoom:7, duration: reduced ? 0 : 1200});
+    }
+  });
+  $('#nextBtn').textContent = T.g.length === 5 ? 'See your results' : 'Next question';
+  countUp($('#rKm'), g.km);
+  header();
+}
+function countUp(el, to){
+  if (reduced || to < 10) { el.textContent = fmt(to); return; }
+  const t0 = performance.now(), dur = 700;
+  const step = t => { const k = Math.min(1, (t - t0) / dur), e = 1 - Math.pow(1 - k, 3); el.textContent = fmt(Math.round(to * e)); if (k < 1) requestAnimationFrame(step); };
+  requestAnimationFrame(step);
+}
+function finishDay(){
+  T.done = true;
+  if (!IS_REAL || S.last === TODAY_N) return;           // replays and preview days never touch the streak
+  S.streak = S.last === TODAY_N - 1 ? S.streak + 1 : 1;
+  S.best = Math.max(S.best, S.streak);
+  S.last = TODAY_N; S.played++; S.sum += total();
+}
+$('#nextBtn').addEventListener('click', () => { if (T.g.length === 5) results(); else question(); });
+
+/* ---------- results ---------- */
+function shareText(){
+  const s = liveStreak();
+  return 'GeoFaith ' + LABEL + ': ' + fmt(total()) + ' / 1,000\n' + T.g.map(g => tile(g.p)).join('') + (s > 1 ? '\n🔥 ' + s + '-day streak' : '') + '\ngeofaith.app';
+}
+function cells(tr, vals, numFrom){
+  vals.forEach((v,j) => { const td = document.createElement('td'); td.textContent = v; if (j >= numFrom) td.className = 'n'; tr.appendChild(td); });
+}
+function results(){
+  show('results'); header();
+  $('#resHead').textContent = 'GeoFaith ' + LABEL + (MODE === 'live' ? ' complete' : MODE === 'replay' ? ' (replay, not counted)' : ' (preview, not counted)');
+  $('#resTotal').textContent = fmt(total());
+  $('#resGrid').textContent = T.g.map(g => tile(g.p)).join('');
+  const rows = $('#resRows'); rows.innerHTML = '';
+  SET.forEach((q,i) => { const g = T.g[i], tr = document.createElement('tr'); cells(tr, [q.answer, fmt(g.km) + ' km', (MULT[i] > 1 ? '×' + MULT[i] + '  ' : '') + g.w], 1); rows.appendChild(tr); });
+  week();
+  $('#stPlayed').textContent = S.played;
+  $('#stStreak').textContent = liveStreak();
+  $('#stBest').textContent = S.best;
+  $('#stAvg').textContent = S.played ? fmt(Math.round(S.sum / S.played)) : '0';
+  tick(); setInterval(tick, 30000);
+  if (SB_URL && SB_KEY) { boardDay = TODAY_N; board(); }
+  document.querySelector('#results .scroll').scrollTop = 0;
+}
+function week(){
+  const bars = $('#bars'), days = $('#days'); bars.innerHTML = ''; days.innerHTML = '';
+  const end = dayNum(REAL_TODAY);
+  for (let n = end - 6; n <= end; n++) {
+    const k = keyOfNum(n), t = dayTotal(k), b = document.createElement('div'), l = document.createElement('span');
+    if (t === null) b.className = 'miss';
+    else { b.style.height = Math.max(3, t / 10) + '%'; b.className = t >= 900 ? 'g' : t >= 500 ? 'y' : 'r'; }
+    b.title = t === null ? 'Not played' : t + ' points';
+    bars.appendChild(b);
+    const wd = new Date(n*864e5).toLocaleDateString('en-IE', {weekday:'short', timeZone:'UTC'}).slice(0,2);
+    l.innerHTML = n === end ? '<b>' + wd + '</b>' : wd; days.appendChild(l);
+  }
+}
+function tick(){
+  const p = Object.fromEntries(new Intl.DateTimeFormat('en-GB', {timeZone:TZ, hour:'2-digit', minute:'2-digit', hourCycle:'h23'}).formatToParts(new Date()).map(x => [x.type, x.value]));
+  const m = 1440 - (Number(p.hour) * 60 + Number(p.minute));
+  $('#countdown').textContent = 'The next five places arrive in ' + Math.floor(m/60) + 'h ' + (m%60) + 'm.';
+}
+$('#shareBtn').addEventListener('click', async () => {
+  const text = shareText(), b = $('#shareBtn');
+  try {
+    if (navigator.share) { await navigator.share({text}); return; }
+    await navigator.clipboard.writeText(text); b.textContent = 'Copied to clipboard';
+  } catch(e) {
+    if (e && e.name === 'AbortError') return;
+    try { await navigator.clipboard.writeText(text); b.textContent = 'Copied to clipboard'; } catch(_) { b.textContent = 'Copy failed. Screenshot your score instead.'; }
+  }
+  setTimeout(() => b.textContent = 'Share your result', 2500);
+});
+
+/* ---------- leaderboard (Supabase REST): top 50, your row pinned, last 14 days ---------- */
+let boardDay = null;
+const sb = (path, opt = {}) => fetch(SB_URL + '/rest/v1/' + path, {...opt, headers:{apikey:SB_KEY, Authorization:'Bearer ' + SB_KEY, 'Content-Type':'application/json', ...(opt.headers || {})}});
+function row(tb, rank, name, sc, you){
+  const tr = document.createElement('tr'); if (you) tr.className = 'you';
+  const vals = [rank, name, fmt(sc)];
+  vals.forEach((v,j) => { const td = document.createElement('td'); td.textContent = v; if (j !== 1) td.className = 'n'; tr.appendChild(td); });
+  tb.appendChild(tr);
+}
+async function board(){
+  $('#board').hidden = false;
+  const k = keyOfNum(boardDay), isToday = boardDay === TODAY_N, mine = dayTotal(k);
+  $('#bDate').textContent = isToday ? 'Today' : new Date(boardDay*864e5).toLocaleDateString('en-IE', {weekday:'short', day:'numeric', month:'short', timeZone:'UTC'});
+  $('#bPrev').disabled = boardDay <= TODAY_N - 13;
+  $('#bNext').disabled = boardDay >= TODAY_N;
+  $('#nick').value = S.nick || '';
+  $('#postWrap').hidden = !isToday || !IS_REAL || hasPosted(TODAY);
+  const tb = $('#boardRows'); tb.innerHTML = '<tr><td colspan="3">Loading…</td></tr>';
+  try {
+    const r = await sb('geofaith_scores?select=nickname,score&day=eq.' + k + '&order=score.desc,created_at.asc&limit=50');
+    if (!r.ok) throw 0;
+    const rows = await r.json(); tb.innerHTML = '';
+    if (hasPosted(k) && mine !== null) {
+      const c = await sb('geofaith_scores?select=day&day=eq.' + k + '&score=gt.' + mine, {method:'HEAD', headers:{Prefer:'count=exact'}});
+      const rank = Number((c.headers.get('content-range') || '*/0').split('/')[1]) + 1;
+      row(tb, rank, S.nick + ' (you)', mine, true);
+    }
+    if (!rows.length) { tb.insertAdjacentHTML('beforeend', '<tr><td colspan="3">No scores posted for this day yet.</td></tr>'); return; }
+    rows.forEach((x,i) => row(tb, i+1, x.nickname, x.score, false));
+  } catch(e) { tb.innerHTML = '<tr><td colspan="3">The leaderboard is offline. Your score is saved on this phone.</td></tr>'; }
+}
+$('#bPrev').addEventListener('click', () => { boardDay--; board(); });
+$('#bNext').addEventListener('click', () => { boardDay++; board(); });
+$('#postBtn').addEventListener('click', async () => {
+  const nick = $('#nick').value.trim(), msg = $('#postMsg');
+  if (!/^[\p{L}\p{N} _.-]{2,16}$/u.test(nick)) { msg.textContent = 'Use 2 to 16 letters, numbers or spaces.'; return; }
+  $('#postBtn').disabled = true; msg.textContent = '';
+  try {
+    const r = await sb('geofaith_scores', {method:'POST', headers:{Prefer:'return=minimal'}, body:JSON.stringify({day:TODAY, nickname:nick, score:total(), device_id:S.device})});
+    if (!r.ok && r.status !== 409) throw 0;
+    S.nick = nick; if (!hasPosted(TODAY)) S.postedDays.push(TODAY); S.postedDays = S.postedDays.slice(-30); save(); board();
+  } catch(e) { msg.textContent = 'Could not post. Check your connection and try again.'; }
+  $('#postBtn').disabled = false;
+});
+
+/* ---------- boot ---------- */
+(() => {
+  const tb = $('#scoreRows');
+  [[25,'Within 25 km'],[100,'100 km away'],[500,'500 km away'],[2000,'2,000 km away'],[8000,'8,000 km away'],[20015,'Other side of the world']]
+    .forEach(([k,l]) => { const tr = document.createElement('tr'); cells(tr, [l, score(k)], 1); tb.appendChild(tr); });
+})();
+$('#startBtn').addEventListener('click', startPlay);
+header();
+if (T.done) results();
+else if (T.g.length) startPlay();
+else show('intro');
+if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js');
+</script>
+</body>
+</html>
